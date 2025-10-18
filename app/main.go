@@ -109,6 +109,7 @@ func main() {
 			cmd.Stdin = os.Stdin
 			cmd.Stderr = os.Stderr
 			if err := cmd.Run(); err != nil {
+				fmt.Fprintf(os.Stderr, "%v\n", err)
 				continue
 			}
 			continue
