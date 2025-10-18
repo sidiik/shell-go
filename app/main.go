@@ -58,6 +58,24 @@ func main() {
 
 			// GOOD CODE
 			fmt.Println(strings.Join(args[1:], " "))
+
+		case "type":
+			if len(args) < 2 {
+				fmt.Println("Invalid argument, Please use this format type <command>")
+				continue
+			}
+			arg := args[1:][0]
+			switch arg {
+			case "exit":
+				fmt.Println("exit is a shell builtin")
+			case "echo":
+				fmt.Println("echo is a shell builtin")
+			case "type":
+				fmt.Println("type is a shell builtin")
+			default:
+				fmt.Printf("%s: not found\n", arg)
+				continue
+			}
 		default:
 			fmt.Printf("%s: command not found\n", args[0])
 			continue
