@@ -5,116 +5,123 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"strconv"
+	"path/filepath"
 	"strings"
 )
 
-// Ensures gofmt doesn't remove the "fmt" import in stage 1 (feel free to remove this!)
-var _ = fmt.Fprint
-
 func main() {
-	// Uncomment this block to pass the first stage
+	reader := bufio.NewReader(os.Stdin)
+
 	for {
-		fmt.Fprint(os.Stdout, "$ ")
+		// Display prompt
+		fmt.Print("$ ")
 
-		input, err := bufio.NewReader(os.Stdin).ReadString('\n')
+		// Read input
+		input, err := reader.ReadString('\n')
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "Error reading input:", err)
-			os.Exit(1)
-		}
-
-		args := strings.Fields(strings.TrimSpace(input[:len(input)-1]))
-
-		if len(args) < 1 {
-			fmt.Println("Format should be like <command args>")
+			fmt.Fprintf(os.Stderr, "Error reading input: %v\n", err)
 			continue
 		}
 
-		switch args[0] {
+		// Remove newline character and trim spaces
+		input = strings.TrimSpace(input)
+		if input == "" {
+			continue
+		}
+
+		// Split input into command and arguments
+		parts := strings.Fields(input)
+		command := parts[0]
+		args := parts[1:]
+
+		// Handle built-in commands
+		switch command {
 		case "exit":
-			var exitCode int
-			if len(args) < 2 {
-				exitCode = 0
-			} else {
-				exitCode, err = strconv.Atoi(args[1])
-				if err != nil {
-					fmt.Println("The exit code should be 1 or 0")
-					continue
-				}
-			}
-
-			os.Exit(exitCode)
-
-		case "echo":
-			// BAD CODE
-
-			// for idx, arg := range args[1:] {
-			// 	if idx == 0 {
-			// 		fmt.Print(arg)
-			// 	} else {
-			// 		fmt.Print(" " + arg)
-			// 	}
-			// }
-			// fmt.Print("\n")
-
-			// GOOD CODE
-			fmt.Println(strings.Join(args[1:], " "))
-
+			os.Exit(0)
 		case "type":
-			if len(args) < 2 {
-				fmt.Println("Invalid argument, Please use this format type <command>")
-				continue
-			}
-
-			arg := args[1]
-
-			switch arg {
-			case "exit":
-				fmt.Println("exit is a shell builtin")
-			case "echo":
-				fmt.Println("echo is a shell builtin")
-			case "type":
-				fmt.Println("type is a shell builtin")
-			default:
-				path, err := exec.LookPath(arg)
-				if err != nil {
-					fmt.Printf("%s: not found\n", arg)
-					continue
-				}
-
-				fmt.Printf("%s is %s\n", arg, path)
-				continue
-			}
-
-		default:
-			inp := args[0]
-			path, err := exec.LookPath(inp)
-
-			if err != nil {
-				fmt.Printf("%s: invalid command\n", inp)
-				continue
-			}
-
-			fmt.Printf("Program was passed %d args (including program name).\n", len(args))
-
-			for idx, arg := range args {
-				if idx == 0 {
-					fmt.Printf("Arg #%d (program name): %s\n", idx, arg)
-				} else {
-					fmt.Printf("Arg #%d: %s\n", idx, arg)
-				}
-			}
-
-			cmd := exec.Command(path, args[:1]...)
-			cmd.Stdin = os.Stdin
-			cmd.Stderr = os.Stderr
-			if err := cmd.Run(); err != nil {
-				fmt.Fprintf(os.Stderr, "%v\n", err)
-				continue
-			}
+			handleTypeCommand(args)
 			continue
 		}
 
+		// Execute external program
+		if err := executeExternalProgram(command, args); err != nil {
+			fmt.Fprintf(os.Stderr, "%s: %v\n", command, err)
+		}
+	}
+}
+
+func handleTypeCommand(args []string) {
+	if len(args) == 0 {
+		fmt.Fprintf(os.Stderr, "type: missing argument\n")
+		return
 	}
 
+	command := args[0]
+
+	// Check if it's a built-in command
+	switch command {
+	case "exit", "type":
+		fmt.Printf("%s is a shell builtin\n", command)
+		return
+	}
+
+	// Search in PATH
+	path := os.Getenv("PATH")
+	dirs := strings.Split(path, string(os.PathListSeparator))
+
+	for _, dir := range dirs {
+		fullPath := filepath.Join(dir, command)
+		if isExecutable(fullPath) {
+			fmt.Printf("%s is %s\n", command, fullPath)
+			return
+		}
+	}
+
+	fmt.Printf("%s: not found\n", command)
+}
+
+func isExecutable(path string) bool {
+	info, err := os.Stat(path)
+	if err != nil {
+		return false
+	}
+
+	// Check if it's a regular file and executable
+	if !info.Mode().IsRegular() {
+		return false
+	}
+
+	// Check execute permission
+	mode := info.Mode()
+	return mode&0111 != 0 // Check if any execute bit is set
+}
+
+func executeExternalProgram(command string, args []string) error {
+	// Search for the executable in PATH
+	path := os.Getenv("PATH")
+	dirs := strings.Split(path, string(os.PathListSeparator))
+
+	var executablePath string
+	for _, dir := range dirs {
+		fullPath := filepath.Join(dir, command)
+		if isExecutable(fullPath) {
+			executablePath = fullPath
+			break
+		}
+	}
+
+	if executablePath == "" {
+		return fmt.Errorf("command not found")
+	}
+
+	// Prepare the command with arguments
+	cmd := exec.Command(executablePath, args...)
+
+	// Set up standard I/O
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	// Execute the command
+	return cmd.Run()
 }
