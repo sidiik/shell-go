@@ -87,7 +87,30 @@ func main() {
 			}
 
 		default:
-			fmt.Printf("%s: command not found\n", args[0])
+			inp := args[0]
+			path, err := exec.LookPath(inp)
+
+			if err != nil {
+				fmt.Printf("%s: invalid command\n", inp)
+				continue
+			}
+
+			fmt.Printf("Program was passed %d args (including program name).\n", len(args))
+
+			for idx, arg := range args {
+				if idx == 0 {
+					fmt.Printf("Arg #%d (program name): %s\n", idx, arg)
+				} else {
+					fmt.Printf("Arg #%d: %s\n", idx, arg)
+				}
+			}
+
+			cmd := exec.Command(path, args[:1]...)
+			cmd.Stdin = os.Stdin
+			cmd.Stderr = os.Stderr
+			if err := cmd.Run(); err != nil {
+				continue
+			}
 			continue
 		}
 
