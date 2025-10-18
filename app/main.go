@@ -164,14 +164,20 @@ func splitWithQoutes(s string) []string {
 	var result []string
 	var currentToken string
 	var isInQoutes bool
+	var isInDoubleQoute bool
 
 	for _, str := range s {
-		if str == '\'' {
+		if str == '"' {
+			isInDoubleQoute = !isInDoubleQoute
+			continue
+		}
+
+		if str == '\'' && !isInDoubleQoute {
 			isInQoutes = !isInQoutes
 			continue
 		}
 
-		if string(str) == " " && !isInQoutes {
+		if string(str) == " " && !isInQoutes && !isInDoubleQoute {
 			if currentToken != "" {
 				result = append(result, currentToken)
 				currentToken = ""
