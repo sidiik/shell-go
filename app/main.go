@@ -80,6 +80,11 @@ func main() {
 				fmt.Printf("%s is %s\n", arg, path)
 			}
 
+		case "pwd":
+			wd, _ := os.Getwd()
+
+			fmt.Println(wd)
+
 		default:
 			_, err := findExecutablePath(args[0])
 
@@ -112,7 +117,7 @@ func findExecutablePath(path string) (string, error) {
 }
 
 func isBuiltinCommand(cmd string) bool {
-	builtIns := []string{"exit", "echo", "type"}
+	builtIns := []string{"exit", "echo", "type", "pwd"}
 
 	for _, builtinCommand := range builtIns {
 		if strings.EqualFold(cmd, builtinCommand) {
