@@ -23,15 +23,11 @@ func main() {
 			os.Exit(1)
 		}
 
-		args := strings.Fields(strings.TrimSpace(input[:len(input)-1]))
+		args := splitWithQoutes(strings.Split(input, "\n")[0])
 
 		if len(args) < 1 {
 			fmt.Println("Format should be like <command args>")
 			continue
-		}
-
-		for idx, arg := range args[1:] {
-			args[idx+1] = strings.ReplaceAll(arg, "'", "")
 		}
 
 		switch args[0] {
@@ -53,10 +49,13 @@ func main() {
 			// BAD CODE
 
 			// for idx, arg := range args[1:] {
+			// 	if arg == " " {
+			// 		continue
+			// 	}
 			// 	if idx == 0 {
-			// 		fmt.Print(arg)
+			// 		fmt.Print(strings.TrimSpace(arg))
 			// 	} else {
-			// 		fmt.Print(" " + arg)
+			// 		fmt.Print(" " + strings.TrimSpace(arg))
 			// 	}
 			// }
 			// fmt.Print("\n")
@@ -159,4 +158,35 @@ func changeWorkingDirectory(dest string) error {
 		return os.Chdir(home)
 	}
 	return os.Chdir(dest)
+}
+
+func splitWithQoutes(s string) []string {
+	var result []string
+	var currentToken string
+	var isInQoutes bool
+
+	for _, str := range s {
+		if str == '\'' {
+			isInQoutes = !isInQoutes
+			continue
+		}
+
+		if string(str) == " " && !isInQoutes {
+			if currentToken != "" {
+				result = append(result, currentToken)
+				currentToken = ""
+			}
+
+			continue
+		}
+
+		currentToken += string(str)
+	}
+
+	if currentToken != "" {
+		result = append(result, currentToken)
+	}
+
+	return result
+
 }
