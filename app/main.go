@@ -31,17 +31,19 @@ func main() {
 
 		switch args[0] {
 		case "exit":
+			var exitCode int
 			if len(args) < 2 {
-				fmt.Println("Format should be like <command args>")
-				continue
+				exitCode = 0
+			} else {
+				exitCode, err = strconv.Atoi(args[1])
+				if err != nil {
+					fmt.Println("The exit code should be 1 or 0")
+					continue
+				}
 			}
 
-			exitCode, err := strconv.Atoi(args[1])
-			if err != nil {
-				fmt.Println("The exit code should be 1 or 0")
-				continue
-			}
 			os.Exit(exitCode)
+
 		default:
 			fmt.Printf("%s: command not found\n", args[0])
 			continue
