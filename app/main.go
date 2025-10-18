@@ -31,7 +31,6 @@ func main() {
 
 		switch args[0] {
 		case "exit":
-
 			if len(args) < 2 {
 				fmt.Println("Format should be like <command args>")
 				continue
@@ -43,6 +42,9 @@ func main() {
 				continue
 			}
 			os.Exit(exitCode)
+		default:
+			fmt.Printf("%s: command not found\n", args[0])
+			continue
 		}
 
 	}
