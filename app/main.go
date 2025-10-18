@@ -30,6 +30,10 @@ func main() {
 			continue
 		}
 
+		for idx, arg := range args[1:] {
+			args[idx+1] = strings.ReplaceAll(arg, "'", "")
+		}
+
 		switch args[0] {
 		case "exit":
 			var exitCode int
