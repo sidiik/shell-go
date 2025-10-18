@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 )
@@ -64,7 +65,9 @@ func main() {
 				fmt.Println("Invalid argument, Please use this format type <command>")
 				continue
 			}
-			arg := args[1:][0]
+
+			arg := args[1]
+
 			switch arg {
 			case "exit":
 				fmt.Println("exit is a shell builtin")
@@ -73,9 +76,16 @@ func main() {
 			case "type":
 				fmt.Println("type is a shell builtin")
 			default:
-				fmt.Printf("%s: not found\n", arg)
+				path, err := exec.LookPath(arg)
+				if err != nil {
+					fmt.Printf("%s: not found\n", arg)
+					continue
+				}
+
+				fmt.Printf("%s is %s\n", arg, path)
 				continue
 			}
+
 		default:
 			fmt.Printf("%s: command not found\n", args[0])
 			continue
