@@ -177,6 +177,11 @@ func splitWithQoutes(s string) []string {
 			continue
 		}
 
+		if str == '\\' && !isInDoubleQoute {
+			str = ' '
+		} else {
+		}
+
 		if string(str) == " " && !isInQoutes && !isInDoubleQoute {
 			if currentToken != "" {
 				result = append(result, currentToken)
