@@ -44,6 +44,20 @@ func main() {
 
 			os.Exit(exitCode)
 
+		case "echo":
+			// BAD CODE
+
+			// for idx, arg := range args[1:] {
+			// 	if idx == 0 {
+			// 		fmt.Print(arg)
+			// 	} else {
+			// 		fmt.Print(" " + arg)
+			// 	}
+			// }
+			// fmt.Print("\n")
+
+			// GOOD CODE
+			fmt.Println(strings.Join(args[1:], " "))
 		default:
 			fmt.Printf("%s: command not found\n", args[0])
 			continue
