@@ -81,16 +81,21 @@ func main() {
 			}
 
 		case "pwd":
-			wd, _ := os.Getwd()
-
-			fmt.Println(wd)
-
+			printWorkingDirectory()
 		case "cd":
-			err := os.Chdir(args[1])
+			if !isArgsValid(args, 2) {
+				fmt.Printf("Usage: cd <dir>\n")
+				continue
+			}
+
+			err := changeWorkingDirectory(args[1])
+
 			if err != nil {
 				fmt.Printf("cd: %s: No such file or directory\n", args[1])
 				continue
 			}
+
+			// printWorkingDirectory()
 
 		default:
 			_, err := findExecutablePath(args[0])
@@ -133,4 +138,21 @@ func isBuiltinCommand(cmd string) bool {
 	}
 
 	return false
+}
+
+func isArgsValid(args []string, requiredArgsCount int) bool {
+	return len(args) == requiredArgsCount
+}
+
+func printWorkingDirectory() {
+	wd, _ := os.Getwd()
+	fmt.Println(wd)
+}
+
+func changeWorkingDirectory(dest string) error {
+	if dest == "~" {
+		home := os.Getenv("HOME")
+		return os.Chdir(home)
+	}
+	return os.Chdir(dest)
 }
