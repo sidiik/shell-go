@@ -185,6 +185,9 @@ func parseUserInput(s string) []string {
 					currentToken = ""
 					continue
 				}
+
+				currentToken += string(str)
+				continue
 			} else {
 				currentToken += string(str)
 				continue
