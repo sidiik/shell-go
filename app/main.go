@@ -147,7 +147,7 @@ func parseUserInput(s string) []string {
 	var currentToken string
 	var isInQoutes, isInDoubleQoutes, escaped bool
 
-	for _, str := range s {
+	for idx, str := range s {
 
 		if escaped {
 			currentToken += string(str)
@@ -186,9 +186,10 @@ func parseUserInput(s string) []string {
 					continue
 				}
 
-				currentToken += string(str)
-				continue
-			} else {
+				if s[idx+1] == ' ' || s[idx+1] == '"' {
+					continue
+				}
+
 				currentToken += string(str)
 				continue
 			}
