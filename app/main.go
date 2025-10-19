@@ -9,11 +9,7 @@ import (
 	"strings"
 )
 
-// Ensures gofmt doesn't remove the "fmt" import in stage 1 (feel free to remove this!)
-var _ = fmt.Fprint
-
 func main() {
-	// Uncomment this block to pass the first stage
 	for {
 		fmt.Fprint(os.Stdout, "$ ")
 
@@ -23,7 +19,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		args := splitWithQoutes(strings.Split(input, "\n")[0])
+		args := parseUserInput(strings.Split(input, "\n")[0])
 
 		if len(args) < 1 {
 			fmt.Println("Format should be like <command args>")
@@ -46,20 +42,6 @@ func main() {
 			os.Exit(exitCode)
 
 		case "echo":
-			// BAD CODE
-
-			// for idx, arg := range args[1:] {
-			// 	if arg == " " {
-			// 		continue
-			// 	}
-			// 	if idx == 0 {
-			// 		fmt.Print(strings.TrimSpace(arg))
-			// 	} else {
-			// 		fmt.Print(" " + strings.TrimSpace(arg))
-			// 	}
-			// }
-			// fmt.Print("\n")
-
 			// GOOD CODE
 			fmt.Println(strings.Join(args[1:], " "))
 
@@ -160,38 +142,57 @@ func changeWorkingDirectory(dest string) error {
 	return os.Chdir(dest)
 }
 
-func splitWithQoutes(s string) []string {
+func parseUserInput(s string) []string {
 	var result []string
 	var currentToken string
-	var isInQoutes bool
-	var isInDoubleQoute bool
+	var isInQoutes, isInDoubleQoutes, escaped bool
 
 	for _, str := range s {
-		if str == '"' {
-			isInDoubleQoute = !isInDoubleQoute
+
+		if escaped {
+			currentToken += string(str)
+			escaped = false
 			continue
 		}
 
-		if str == '\'' && !isInDoubleQoute {
-			isInQoutes = !isInQoutes
+		switch str {
+		case '"':
+			isInDoubleQoutes = !isInDoubleQoutes
 			continue
-		}
 
-		if str == '\\' && !isInDoubleQoute {
-			str = ' '
-		} else {
-		}
-
-		if string(str) == " " && !isInQoutes && !isInDoubleQoute {
-			if currentToken != "" {
-				result = append(result, currentToken)
-				currentToken = ""
+		case '\'':
+			if !isInDoubleQoutes {
+				isInQoutes = !isInQoutes
+				continue
+			} else {
+				currentToken += string(str)
+				continue
 			}
 
-			continue
-		}
+		case '\\':
+			if isInDoubleQoutes || isInQoutes {
+				currentToken += string(str)
+				continue
+			} else {
+				escaped = true
+				continue
+			}
 
-		currentToken += string(str)
+		case ' ':
+			if !isInQoutes || !isInDoubleQoutes {
+				if currentToken != "" {
+					result = append(result, currentToken)
+					currentToken = ""
+					continue
+				}
+			} else {
+				currentToken += string(str)
+				continue
+			}
+
+		default:
+			currentToken += string(str)
+		}
 	}
 
 	if currentToken != "" {
