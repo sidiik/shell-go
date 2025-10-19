@@ -157,7 +157,12 @@ func parseUserInput(s string) []string {
 
 		switch str {
 		case '"':
-			isInDoubleQoutes = !isInDoubleQoutes
+			if !isInQoutes {
+				isInDoubleQoutes = !isInDoubleQoutes
+				continue
+			}
+
+			currentToken += string(str)
 			continue
 
 		case '\'':
