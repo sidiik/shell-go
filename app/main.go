@@ -207,5 +207,3 @@ func parseUserInput(s string) []string {
 	return result
 
 }
-
-// 1. bus
