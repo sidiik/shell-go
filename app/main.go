@@ -145,9 +145,9 @@ func changeWorkingDirectory(dest string) error {
 func parseUserInput(s string) []string {
 	var result []string
 	var currentToken string
-	var isInQoutes, isInDoubleQoutes, escaped bool
+	var isInSingleQoutes, isInDoubleQoutes, escaped bool
 
-	for _, str := range s {
+	for idx, str := range s {
 
 		if escaped {
 			currentToken += string(str)
@@ -157,7 +157,7 @@ func parseUserInput(s string) []string {
 
 		switch str {
 		case '"':
-			if !isInQoutes {
+			if !isInSingleQoutes {
 				isInDoubleQoutes = !isInDoubleQoutes
 				continue
 			}
@@ -167,7 +167,7 @@ func parseUserInput(s string) []string {
 
 		case '\'':
 			if !isInDoubleQoutes {
-				isInQoutes = !isInQoutes
+				isInSingleQoutes = !isInSingleQoutes
 				continue
 			} else {
 				currentToken += string(str)
@@ -175,16 +175,25 @@ func parseUserInput(s string) []string {
 			}
 
 		case '\\':
-			if isInDoubleQoutes || isInQoutes {
+			if isInDoubleQoutes {
+				nextRune := rune(s[idx+1])
+				if nextRune == '"' || nextRune == '\\' {
+					escaped = true
+					continue
+				}
 				currentToken += string(str)
 				continue
 			} else {
+				if isInSingleQoutes {
+					currentToken += string(str)
+					continue
+				}
 				escaped = true
 				continue
 			}
 
 		case ' ':
-			if isInQoutes || isInDoubleQoutes {
+			if isInSingleQoutes || isInDoubleQoutes {
 				currentToken += string(str)
 				continue
 			} else {
