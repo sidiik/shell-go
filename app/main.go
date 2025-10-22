@@ -5,9 +5,12 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
+
+const debug = true
 
 func main() {
 	for {
@@ -26,6 +29,8 @@ func main() {
 			continue
 		}
 
+		redirectorIdx := checkForRedirector(args)
+
 		switch args[0] {
 		case "exit":
 			var exitCode int
@@ -41,9 +46,9 @@ func main() {
 
 			os.Exit(exitCode)
 
-		case "echo":
-			// GOOD CODE
-			fmt.Println(strings.Join(args[1:], " "))
+		// case "echo":
+		// 	// GOOD CODE
+		// 	fmt.Println(strings.Join(args[1:], " "))
 
 		case "type":
 			if len(args) < 2 {
@@ -80,20 +85,8 @@ func main() {
 				continue
 			}
 
-			// printWorkingDirectory()
-
 		default:
-			_, err := findExecutablePath(args[0])
-
-			if err != nil {
-				fmt.Printf("%s: command not found\n", args[0])
-			}
-
-			cmd := exec.Command(args[0], args[1:]...)
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
-			cmd.Run()
-			continue
+			executeExternalCommand(args, redirectorIdx)
 		}
 
 	}
@@ -204,6 +197,34 @@ func parseUserInput(s string) []string {
 				}
 			}
 
+		case '>':
+			if isInDoubleQoutes || isInSingleQoutes {
+				currentToken += string(str)
+				continue
+			} else {
+				if currentToken != "" {
+					result = append(result, currentToken)
+					currentToken = ""
+					result = append(result, ">")
+					continue
+				} else {
+					result = append(result, ">")
+					continue
+				}
+
+			}
+		case '1':
+			if s[idx+1] == '>' {
+				if isInDoubleQoutes || isInSingleQoutes {
+					currentToken += string(str)
+					continue
+				} else {
+					if currentToken != "" {
+						continue
+					}
+				}
+			}
+
 		default:
 			currentToken += string(str)
 		}
@@ -213,6 +234,88 @@ func parseUserInput(s string) []string {
 		result = append(result, currentToken)
 	}
 
+	if debug {
+		fmt.Printf("TOKEN: %+#v\n", result)
+	}
+
 	return result
+
+}
+
+func checkForRedirector(tokens []string) (redirectorIdx int) {
+	for idx, token := range tokens {
+		if token == ">" || token == "1>" {
+			redirectorIdx = idx
+			break
+		}
+
+		continue
+	}
+
+	return
+
+}
+
+func executeExternalCommand(args []string, redirectorIdx int) {
+	_, err := findExecutablePath(args[0])
+
+	if redirectorIdx != 0 {
+		commandTokens := []string{}
+		for idx, arg := range args {
+			if idx == redirectorIdx {
+				break
+			}
+
+			commandTokens = append(commandTokens, arg)
+			continue
+
+		}
+
+		fileName := args[redirectorIdx+1]
+		if err := os.MkdirAll(filepath.Dir(fileName), 0755); err != nil {
+			fmt.Printf("Error creating directory: %v\n", err)
+			return
+		}
+
+		if _, err := os.Stat(fileName); os.IsNotExist(err) {
+			file, err := os.Create(fileName)
+			if err != nil {
+				fmt.Printf("Unable to create file: %+#v\n", err)
+			}
+			defer file.Close()
+
+		}
+
+		fileInfo, _ := os.Stat(fileName)
+
+		if fileInfo.IsDir() {
+			fmt.Println("Can not write to dir")
+			return
+		}
+
+		f, err := os.OpenFile(fileName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+		if err != nil {
+			fmt.Println("Unable to open file")
+			return
+		}
+
+		defer f.Close()
+
+		cmd := exec.Command(commandTokens[0], commandTokens[1:]...)
+		cmd.Stdout = f
+		cmd.Stderr = os.Stderr
+		cmd.Run()
+
+		return
+	}
+
+	if err != nil {
+		fmt.Printf("%s: command not found\n", args[0])
+	}
+
+	cmd := exec.Command(args[0], args[1:]...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Run()
 
 }
