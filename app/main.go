@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-const debug = true
+const debug = false
 
 func main() {
 	for {
@@ -214,16 +214,21 @@ func parseUserInput(s string) []string {
 
 			}
 		case '1':
+			if len(s) == idx+1 {
+				currentToken += string(str)
+				continue
+			}
+
 			if s[idx+1] == '>' {
 				if isInDoubleQoutes || isInSingleQoutes {
 					currentToken += string(str)
 					continue
-				} else {
-					if currentToken != "" {
-						continue
-					}
 				}
+				continue
 			}
+
+			currentToken += string(str)
+			continue
 
 		default:
 			currentToken += string(str)
