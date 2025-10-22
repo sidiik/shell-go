@@ -138,9 +138,14 @@ func changeWorkingDirectory(dest string) error {
 func parseUserInput(s string) []string {
 	var result []string
 	var currentToken string
-	var isInSingleQoutes, isInDoubleQoutes, escaped bool
+	var isInSingleQoutes, isInDoubleQoutes, escaped, escapeForRedirector bool
 
 	for idx, str := range s {
+
+		if escapeForRedirector {
+			escapeForRedirector = false
+			continue
+		}
 
 		if escaped {
 			currentToken += string(str)
@@ -213,7 +218,7 @@ func parseUserInput(s string) []string {
 				}
 
 			}
-		case '1':
+		case '1', '2':
 			if len(s) == idx+1 {
 				currentToken += string(str)
 				continue
@@ -224,6 +229,9 @@ func parseUserInput(s string) []string {
 					currentToken += string(str)
 					continue
 				}
+
+				escapeForRedirector = true
+				currentToken += string(str) + ">"
 				continue
 			}
 
@@ -240,7 +248,7 @@ func parseUserInput(s string) []string {
 	}
 
 	if debug {
-		fmt.Printf("TOKEN: %+#v\n", result)
+		fmt.Printf("TOKENS: %+#v\n", result)
 	}
 
 	return result
@@ -249,7 +257,7 @@ func parseUserInput(s string) []string {
 
 func checkForRedirector(tokens []string) (redirectorIdx int) {
 	for idx, token := range tokens {
-		if token == ">" || token == "1>" {
+		if token == ">" || token == "1>" || token == "2>" {
 			redirectorIdx = idx
 			break
 		}
@@ -276,6 +284,7 @@ func executeExternalCommand(args []string, redirectorIdx int) {
 
 		}
 
+		redirectorType := args[redirectorIdx]
 		fileName := args[redirectorIdx+1]
 		if err := os.MkdirAll(filepath.Dir(fileName), 0755); err != nil {
 			fmt.Printf("Error creating directory: %v\n", err)
@@ -307,8 +316,15 @@ func executeExternalCommand(args []string, redirectorIdx int) {
 		defer f.Close()
 
 		cmd := exec.Command(commandTokens[0], commandTokens[1:]...)
-		cmd.Stdout = f
-		cmd.Stderr = os.Stderr
+
+		if redirectorType == "2>" {
+			cmd.Stderr = f
+			cmd.Stdout = os.Stdout
+		} else {
+			cmd.Stderr = os.Stderr
+			cmd.Stdout = f
+		}
+
 		cmd.Run()
 
 		return

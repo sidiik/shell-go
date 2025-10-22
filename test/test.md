@@ -1,2 +1,0 @@
-quz
-test.md
