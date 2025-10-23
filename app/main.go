@@ -11,6 +11,7 @@ import (
 )
 
 const debug = false
+const dryRun = false
 
 func main() {
 	for {
@@ -28,8 +29,6 @@ func main() {
 			fmt.Println("Format should be like <command args>")
 			continue
 		}
-
-		redirectorIdx := checkForRedirector(args)
 
 		switch args[0] {
 		case "exit":
@@ -86,7 +85,7 @@ func main() {
 			}
 
 		default:
-			executeExternalCommand(args, redirectorIdx)
+			executeExternalCommand(args)
 		}
 
 	}
@@ -139,8 +138,14 @@ func parseUserInput(s string) []string {
 	var result []string
 	var currentToken string
 	var isInSingleQoutes, isInDoubleQoutes, escaped, escapeForRedirector bool
+	var skipCount int
 
 	for idx, str := range s {
+
+		if skipCount > 0 {
+			skipCount--
+			continue
+		}
 
 		if escapeForRedirector {
 			escapeForRedirector = false
@@ -213,6 +218,11 @@ func parseUserInput(s string) []string {
 					result = append(result, ">")
 					continue
 				} else {
+					if s[idx+1] == '>' {
+						result = append(result, ">>")
+						escapeForRedirector = true
+						continue
+					}
 					result = append(result, ">")
 					continue
 				}
@@ -224,7 +234,7 @@ func parseUserInput(s string) []string {
 				continue
 			}
 
-			if s[idx+1] == '>' {
+			if s[idx+1] == '>' && s[idx+2] != '>' {
 				if isInDoubleQoutes || isInSingleQoutes {
 					currentToken += string(str)
 					continue
@@ -232,6 +242,18 @@ func parseUserInput(s string) []string {
 
 				escapeForRedirector = true
 				currentToken += string(str) + ">"
+				continue
+			}
+
+			if s[idx+1] == '>' && s[idx+2] == '>' {
+				if isInDoubleQoutes || isInSingleQoutes {
+					currentToken += string(str)
+					continue
+				}
+
+				escapeForRedirector = true
+				currentToken += string(str) + ">>"
+				skipCount = 1
 				continue
 			}
 
@@ -255,23 +277,29 @@ func parseUserInput(s string) []string {
 
 }
 
-func checkForRedirector(tokens []string) (redirectorIdx int) {
+func checkForRedirector(tokens []string) (redirectorIdx int, appendMode bool) {
 	for idx, token := range tokens {
-		if token == ">" || token == "1>" || token == "2>" {
+		switch token {
+		case ">>", "1>>", "2>>":
 			redirectorIdx = idx
-			break
+			appendMode = true
+			return
+		case ">", "1>", "2>":
+			redirectorIdx = idx
+			appendMode = false
+			return
 		}
-
-		continue
 	}
 
 	return
 
 }
 
-func executeExternalCommand(args []string, redirectorIdx int) {
+func executeExternalCommand(args []string) {
+
 	_, err := findExecutablePath(args[0])
 
+	redirectorIdx, appendMode := checkForRedirector(args)
 	if redirectorIdx != 0 {
 		commandTokens := []string{}
 		for idx, arg := range args {
@@ -307,25 +335,36 @@ func executeExternalCommand(args []string, redirectorIdx int) {
 			return
 		}
 
-		f, err := os.OpenFile(fileName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
-		if err != nil {
-			fmt.Println("Unable to open file")
-			return
+		var f *os.File
+
+		if appendMode {
+			f, err = os.OpenFile(fileName, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+			if err != nil {
+				fmt.Println("Unable to open file")
+				return
+			}
+		} else {
+			f, err = os.OpenFile(fileName, os.O_TRUNC|os.O_WRONLY|os.O_CREATE, 0644)
+			if err != nil {
+				fmt.Println("Unable to open file")
+				return
+			}
 		}
 
 		defer f.Close()
 
 		cmd := exec.Command(commandTokens[0], commandTokens[1:]...)
 
-		if redirectorType == "2>" {
+		switch redirectorType {
+		case "2>":
 			cmd.Stderr = f
 			cmd.Stdout = os.Stdout
-		} else {
+		default:
 			cmd.Stderr = os.Stderr
 			cmd.Stdout = f
 		}
 
-		cmd.Run()
+		run(cmd)
 
 		return
 	}
@@ -337,6 +376,16 @@ func executeExternalCommand(args []string, redirectorIdx int) {
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.Run()
+	run(cmd)
 
+}
+
+func run(cmd *exec.Cmd) error {
+	if !dryRun {
+		return cmd.Run()
+	}
+
+	fmt.Println("(dry-run) Command skipped.")
+
+	return nil
 }
