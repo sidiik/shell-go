@@ -359,6 +359,9 @@ func executeExternalCommand(args []string) {
 		case "2>":
 			cmd.Stderr = f
 			cmd.Stdout = os.Stdout
+		case "2>>":
+			cmd.Stderr = f
+			cmd.Stdout = os.Stdout
 		default:
 			cmd.Stderr = os.Stderr
 			cmd.Stdout = f
