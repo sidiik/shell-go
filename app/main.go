@@ -1,29 +1,62 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/chzyer/readline"
 )
 
 const debug = false
 const dryRun = false
 
-func main() {
-	for {
-		fmt.Fprint(os.Stdout, "$ ")
+var builtIns = []string{"exit", "echo", "type", "pwd"}
 
-		input, err := bufio.NewReader(os.Stdin).ReadString('\n')
-		if err != nil {
-			fmt.Fprintln(os.Stderr, "Error reading input:", err)
-			os.Exit(1)
+func main() {
+
+	completer := readline.NewPrefixCompleter(
+		readline.PcItem("exit"),
+		readline.PcItem("echo"),
+		readline.PcItem("cd"),
+		readline.PcItem("type"),
+		readline.PcItem("pwd"),
+	)
+
+	rl, err := readline.NewEx(&readline.Config{
+		Prompt:          "$ ",
+		AutoComplete:    completer,
+		HistoryFile:     "./history",
+		InterruptPrompt: "^C",
+		EOFPrompt:       "exit",
+	})
+
+	if err != nil {
+		fmt.Println("Error creating readline:", err)
+		return
+	}
+
+	defer rl.Close()
+
+	for {
+		line, err := rl.Readline()
+
+		if err == readline.ErrInterrupt {
+			// Ctrl+C
+			if len(line) == 0 {
+				break
+			}
+			continue
+		} else if err == io.EOF {
+			// Ctrl+D (exit)
+			break
 		}
 
-		args := parseUserInput(strings.Split(input, "\n")[0])
+		args := parseUserInput(strings.TrimSpace(line))
 
 		if len(args) < 1 {
 			fmt.Println("Format should be like <command args>")
@@ -44,10 +77,6 @@ func main() {
 			}
 
 			os.Exit(exitCode)
-
-		// case "echo":
-		// 	// GOOD CODE
-		// 	fmt.Println(strings.Join(args[1:], " "))
 
 		case "type":
 			if len(args) < 2 {
@@ -106,7 +135,6 @@ func findExecutablePath(path string) (string, error) {
 }
 
 func isBuiltinCommand(cmd string) bool {
-	builtIns := []string{"exit", "echo", "type", "pwd"}
 
 	for _, builtinCommand := range builtIns {
 		if strings.EqualFold(cmd, builtinCommand) {
@@ -356,10 +384,7 @@ func executeExternalCommand(args []string) {
 		cmd := exec.Command(commandTokens[0], commandTokens[1:]...)
 
 		switch redirectorType {
-		case "2>":
-			cmd.Stderr = f
-			cmd.Stdout = os.Stdout
-		case "2>>":
+		case "2>", "2>>":
 			cmd.Stderr = f
 			cmd.Stdout = os.Stdout
 		default:
